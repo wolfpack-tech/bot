@@ -1,38 +1,20 @@
+# Utilise une image Node.js comme image de base
 FROM node:18
 
-
-# Installer les dépendances nécessaires pour Puppeteer
-RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libdrm2 \
-    libxkbcommon-x11-0 \
-    libgbm1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libasound2 \
-    libpangocairo-1.0-0 \
-    libpango-1.0-0 \
-    libcups2 \
-    libxshmfence1 \
-    libnss3-dev
-
-# Définir le répertoire de travail dans le conteneur
+# Définit le répertoire de travail
 WORKDIR /app
 
-# Copier le package.json et le package-lock.json (si présent)
+# Copie le fichier package.json et package-lock.json
 COPY package*.json ./
 
-# Installer les dépendances
+# Installe les dépendances
 RUN npm install
 
-# Copier le reste de l'application dans le conteneur
+# Copie tous les fichiers de l'application
 COPY . .
 
-# Exposer le port sur lequel l'application va fonctionner
+# Expose le port sur lequel l'application écoutera
 EXPOSE 5000
 
-# Démarrer l'application
-CMD ["node", "bot.js"]
+# Commande pour démarrer l'application
+CMD ["npm", "start"]

@@ -1,15 +1,15 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const axios = require('axios');
 const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const bodyParser = require('body-parser');
-const express = require('express');
 
-// Crée le client WhatsApp avec une stratégie d'authentification locale pour sauvegarder la session
+// Crée le client WhatsApp
 const client = new Client({
     authStrategy: new LocalAuth()
 });
 
-// Génère et affiche le QR code pour se connecter à WhatsApp
+// Génére le QR code
 client.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
     console.log('Scanne le QR code avec WhatsApp pour te connecter.');
@@ -20,7 +20,7 @@ client.on('ready', () => {
     console.log('Client WhatsApp prêt!');
 });
 
-// Crée le serveur Express
+// Initialise l'application Express
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -32,7 +32,7 @@ client.on('message', async (message) => {
     console.log(`Message reçu : ${message.body}`);
 
     try {
-        // Envoie le message reçu à Botpress Messaging API via l'URL de webhook
+        // Envoie le message reçu à Botpress Messaging API
         const response = await axios.post('https://webhook.botpress.cloud/8079f124-3390-438f-89f3-bc518f86fe93', {
             type: 'text',
             text: message.body,
@@ -41,42 +41,33 @@ client.on('message', async (message) => {
                 id: message.from,
                 name: message._data.notifyName
             }
-        }, {
-            headers: {
-                'Content-Type': 'application/json'
-            }
         });
 
         // Récupère la réponse de Botpress Messaging API
-        const { conversationId, text } = response.data;
+        const { conversationId, text } = response.data; // Adapte selon la structure de réponse
 
         // Envoie la réponse à l'utilisateur WhatsApp
         await client.sendMessage(conversationId, text);
+
     } catch (error) {
         console.error('Erreur lors de la communication avec Botpress Messaging API:', error);
         client.sendMessage(message.from, 'Désolé, une erreur est survenue lors de la communication avec le bot.');
     }
 });
 
-// Écoute les réponses de Botpress via l'endpoint configuré
-app.post('/webhook', async (req, res) => {
-    const { conversationId, text } = req.body;
-
-    console.log('Réponse reçue de Botpress:', req.body);
-
-    try {
-        // Envoie la réponse à l'utilisateur WhatsApp correspondant
-        await client.sendMessage(conversationId, text);
-        res.status(200).send('Message envoyé à WhatsApp');
-    } catch (error) {
-        console.error('Erreur lors de l\'envoi à WhatsApp:', error);
-        res.status(500).send('Erreur lors de l\'envoi à WhatsApp');
-    }
+// Démarre le serveur Express
+app.listen(PORT, () => {
+    console.log(`Serveur démarré sur le port ${PORT}`);
 });
 
-// Démarre le serveur
-app.listen(PORT, () => {
-    console.log(`Serveur en cours d'exécution sur le port ${PORT}`);
+// Route pour recevoir les messages de WhatsApp via Botpress Messaging API  
+app.post('/messages', async (req, res) => {
+    const { conversationId, text } = req.body;
+
+    // Envoie le message à l'utilisateur WhatsApp
+    await client.sendMessage(conversationId, text);
+
+    res.sendStatus(200);
 });
 
 // Initialise le client WhatsApp

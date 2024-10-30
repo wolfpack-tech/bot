@@ -1,11 +1,10 @@
 {
-    "name": "bot",
+    "name": "mon-bot",
     "version": "1.0.0",
-    "description": "nbbc bot",
+    "description": "Un bot WhatsApp utilisant WhatsApp Web.js et Express.",
     "main": "bot.js",
     "scripts": {
-        "start": "node bot.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "start": "node bot.js"
     },
     "keywords": [],
     "author": "",
@@ -16,5 +15,8 @@
         "express": "^4.21.1",
         "qrcode-terminal": "^0.12.0",
         "whatsapp-web.js": "^1.26.0"
+    },
+    "engines": {
+        "node": ">=16"
     }
 }
