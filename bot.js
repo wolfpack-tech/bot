@@ -1,54 +1,83 @@
-const express = require('express');
-const { Client, LocalAuth } = require('whatsapp-web.js');
 const axios = require('axios');
-const app = express();
-const port = 5000; // Choisis ton port
+const qrcode = require('qrcode-terminal');
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const bodyParser = require('body-parser');
+const express = require('express');
 
-// Initialisation du client WhatsApp avec des options Puppeteer
+// Crée le client WhatsApp avec une stratégie d'authentification locale pour sauvegarder la session
 const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        executablePath: '/usr/bin/chromium-browser',  // Chemin de Chromium sur Back4App
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    authStrategy: new LocalAuth()
+});
+
+// Génère et affiche le QR code pour se connecter à WhatsApp
+client.on('qr', (qr) => {
+    qrcode.generate(qr, { small: true });
+    console.log('Scanne le QR code avec WhatsApp pour te connecter.');
+});
+
+// Indique quand le client WhatsApp est prêt
+client.on('ready', () => {
+    console.log('Client WhatsApp prêt!');
+});
+
+// Crée le serveur Express
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware pour traiter les requêtes JSON
+app.use(bodyParser.json());
+
+// Gère les messages entrants
+client.on('message', async (message) => {
+    console.log(`Message reçu : ${message.body}`);
+
+    try {
+        // Envoie le message reçu à Botpress Messaging API via l'URL de webhook
+        const response = await axios.post('https://webhook.botpress.cloud/8079f124-3390-438f-89f3-bc518f86fe93', {
+            type: 'text',
+            text: message.body,
+            conversationId: message.from,
+            user: {
+                id: message.from,
+                name: message._data.notifyName
+            }
+        }, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Récupère la réponse de Botpress Messaging API
+        const { conversationId, text } = response.data;
+
+        // Envoie la réponse à l'utilisateur WhatsApp
+        await client.sendMessage(conversationId, text);
+    } catch (error) {
+        console.error('Erreur lors de la communication avec Botpress Messaging API:', error);
+        client.sendMessage(message.from, 'Désolé, une erreur est survenue lors de la communication avec le bot.');
     }
 });
 
-client.on('qr', (qr) => {
-    console.log('QR RECEIVED', qr);
-    // Tu peux afficher le QR Code ici sur la page principale de ton mini site
+// Écoute les réponses de Botpress via l'endpoint configuré
+app.post('/webhook', async (req, res) => {
+    const { conversationId, text } = req.body;
+
+    console.log('Réponse reçue de Botpress:', req.body);
+
+    try {
+        // Envoie la réponse à l'utilisateur WhatsApp correspondant
+        await client.sendMessage(conversationId, text);
+        res.status(200).send('Message envoyé à WhatsApp');
+    } catch (error) {
+        console.error('Erreur lors de l\'envoi à WhatsApp:', error);
+        res.status(500).send('Erreur lors de l\'envoi à WhatsApp');
+    }
 });
 
-client.on('ready', () => {
-    console.log('Client is ready!');
+// Démarre le serveur
+app.listen(PORT, () => {
+    console.log(`Serveur en cours d'exécution sur le port ${PORT}`);
 });
 
-// Capture des messages entrants et envoi à Botpress
-client.on('message', msg => {
-    const messageText = msg.body;
-    const chatId = msg.from;
-
-    axios.post('https://webhook.botpress.cloud/8079f124-3390-438f-89f3-bc518f86fe93', {
-        type: 'text',
-        text: messageText,
-        chatId: chatId
-    })
-        .then(response => {
-            // Recevoir la réponse de Botpress et la renvoyer à WhatsApp
-            const botResponse = response.data.response;
-            client.sendMessage(chatId, botResponse);
-        })
-        .catch(error => {
-            console.error('Error sending message to Botpress:', error);
-        });
-});
-
+// Initialise le client WhatsApp
 client.initialize();
-
-// Serveur HTTP pour afficher le QR Code et autres informations
-app.get('/', (req, res) => {
-    res.send('<h1>Bienvenue sur votre mini app Node.js avec WhatsApp</h1>');
-});
-
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
