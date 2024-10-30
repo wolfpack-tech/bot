@@ -1,7 +1,7 @@
 FROM baseImage
 
 # Définir le répertoire de travail dans le conteneur
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Copier le package.json et le package-lock.json (si présent)
 COPY package*.json ./
