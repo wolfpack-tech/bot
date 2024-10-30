@@ -4,9 +4,13 @@ const axios = require('axios');
 const app = express();
 const port = 5000; // Choisis ton port
 
-// Initialisation du client WhatsApp
+// Initialisation du client WhatsApp avec des options Puppeteer
 const client = new Client({
-    authStrategy: new LocalAuth()
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+        executablePath: '/usr/bin/chromium-browser',  // Chemin de Chromium sur Back4App
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
 });
 
 client.on('qr', (qr) => {
